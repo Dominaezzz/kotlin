@@ -84,15 +84,18 @@ class ResultTypeResolver(
             if (!isProperType(constraint.type)) continue
             if (!checkConstraint(this, constraint.type, constraint.kind, resultType)) return false
         }
-        if (
-            !trivialConstraintTypeInferenceOracle.isSuitableResultedType(resultType)
-            && isNothingNotSuitableFor(variableWithConstraints.typeVariable)
-        ) return false
+        if (!trivialConstraintTypeInferenceOracle.isSuitableResultedType(resultType)) {
+            if (nothingIsNotSuitableFor(variableWithConstraints.typeVariable)) return false
+            if (resultType.isNullableType() && variableWithConstraints.constraints.any {
+                    it.kind == ConstraintKind.UPPER && it.position.from !is DeclaredUpperBoundConstraintPosition
+                }
+            ) return false
+        }
 
         return true
     }
 
-    private fun isNothingNotSuitableFor(variable: TypeVariableMarker): Boolean {
+    private fun nothingIsNotSuitableFor(variable: TypeVariableMarker): Boolean {
         val parameterName = variable.safeAs<TypeVariableFromCallableDescriptor>()?.originalTypeParameter?.name ?: return false
         val isSpecialFunctionParameter = statelessCallbacks?.isSpecialFunctionTypeParameterName(parameterName) ?: false
         val isBangBangParameter = isSpecialFunctionParameter && statelessCallbacks?.isExclExclTypeParameterName(parameterName) ?: false
